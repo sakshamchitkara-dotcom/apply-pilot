@@ -25,7 +25,12 @@ def pick(jobs, title_of, n=4):
 
 
 def trim(s, n=1500):
-    return s[:n] if isinstance(s, str) else s
+    """Truncate without leaving half an (escaped) HTML tag behind."""
+    if not isinstance(s, str) or len(s) <= n:
+        return s
+    s = s[:n]
+    cut = max(s.rfind("&lt;"), s.rfind("<"))
+    return s[:cut] if cut > 0 else s
 
 
 def main():
