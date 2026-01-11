@@ -36,3 +36,26 @@ def greenhouse(http: Http, token: str, company: str | None = None) -> list[Posti
             posted_at=j.get("first_published") or j.get("updated_at") or "",
         ))
     return out
+
+
+def lever(http: Http, token: str, company: str | None = None) -> list[Posting]:
+    data = http.get_json(f"https://api.lever.co/v0/postings/{token}?mode=json")
+    out = []
+    for j in data:
+        cat = j.get("categories") or {}
+        locs = cat.get("allLocations") or [cat.get("location", "")]
+        body = [j.get("descriptionPlain", "")]
+        body += [f"{li.get('text', '')}\n{strip_html(li.get('content', ''))}" for li in j.get("lists", [])]
+        body.append(j.get("additionalPlain", ""))
+        sal = j.get("salaryRange") or {}
+        out.append(Posting(
+            source="lever", board=token, external_id=j["id"], company=company or token,
+            title=j["text"].strip(), location="; ".join(l for l in locs if l),
+            remote=j.get("workplaceType") == "remote" or any(REMOTE_RE.search(l or "") for l in locs),
+            url=j["hostedUrl"], apply_url=j.get("applyUrl", j["hostedUrl"]),
+            description="\n\n".join(b for b in body if b).strip(),
+            employment_type=cat.get("commitment", ""),
+            salary_min=sal.get("min") if sal.get("interval", "per-year-salary") == "per-year-salary" else None,
+            posted_at=str(j.get("createdAt", "")),
+        ))
+    return out
