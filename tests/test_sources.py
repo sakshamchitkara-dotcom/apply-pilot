@@ -21,3 +21,13 @@ def test_lever_normalizes(fixture_http):
     assert intern.apply_url.endswith("/apply")
     assert "Paris" in intern.location
     assert len(intern.description) > 100
+
+
+def test_ashby_normalizes_with_salary(fixture_http):
+    http = fixture_http({"https://api.ashbyhq.com/posting-api/job-board/ramp": "ashby_ramp.json"})
+    ps = sources.ashby(http, "ramp", "Ramp")
+    assert len(ps) == 4
+    sec = next(p for p in ps if "Security Engineer" in p.title)
+    assert sec.title == "Security Engineer, Cloud"  # whitespace stripped
+    assert sec.salary_min == 211400 and sec.remote
+    assert "Remote (US)" in sec.location
