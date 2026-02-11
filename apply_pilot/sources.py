@@ -86,3 +86,32 @@ def ashby(http: Http, token: str, company: str | None = None) -> list[Posting]:
             posted_at=j.get("publishedAt", ""),
         ))
     return out
+
+
+def smartrecruiters(http: Http, token: str, company: str | None = None, max_pages: int = 5) -> list[Posting]:
+    """SmartRecruiters public Posting API. List endpoint has no description body;
+    we keep the listing fields and let matching work from title/department."""
+    out = []
+    for page in range(max_pages):  # ponytail: page cap keeps huge boards (Bosch: ~5k) cheap
+        data = http.get_json(f"https://api.smartrecruiters.com/v1/companies/{token}/postings"
+                             f"?limit=100&offset={page * 100}")
+        for j in data.get("content", []):
+            loc = j.get("location") or {}
+            desc = " / ".join(filter(None, [(j.get("department") or {}).get("label"),
+                                            (j.get("function") or {}).get("label"),
+                                            (j.get("experienceLevel") or {}).get("label")]))
+            out.append(Posting(
+                source="smartrecruiters", board=token, external_id=str(j["id"]),
+                company=company or (j.get("company") or {}).get("name") or token,
+                title=j["name"].strip(),
+                location=loc.get("fullLocation", "").replace(", ,", ","),
+                remote=bool(loc.get("remote")),
+                url=f"https://jobs.smartrecruiters.com/{token}/{j['id']}",
+                apply_url=f"https://jobs.smartrecruiters.com/{token}/{j['id']}",
+                description=desc,
+                employment_type=(j.get("typeOfEmployment") or {}).get("label", ""),
+                posted_at=j.get("releasedDate", ""),
+            ))
+        if (page + 1) * 100 >= data.get("totalFound", 0):
+            break
+    return out
