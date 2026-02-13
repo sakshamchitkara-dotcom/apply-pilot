@@ -39,3 +39,30 @@ def test_smartrecruiters_normalizes(fixture_http):
     assert len(ps) == 3
     assert all(p.url.startswith("https://jobs.smartrecruiters.com/ServiceNow/") for p in ps)
     assert ps[0].company == "ServiceNow" and ", ," not in ps[0].location
+
+
+def test_simplify_html_table(fixture_http):
+    url = "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/README.md"
+    http = fixture_http({url: "simplify_readme.md"})
+    ps = sources.github_list(http, "simplify-internships")
+    assert len(ps) == 12
+    assert all(p.company and p.company != "↳" and p.title for p in ps)
+    assert all("utm_source" not in p.url for p in ps)
+    assert not any("<" in p.location for p in ps)
+
+
+MD_TABLE = """
+| Company | Role | Location | Application/Link | Date Posted |
+| ------- | ---- | -------- | ---------------- | ----------- |
+| Acme Robotics | Software Intern 🛂 | Remote | <a href="https://job-boards.greenhouse.io/acme/jobs/1?utm_source=x"><img alt="Apply"></a> | Aug 21 |
+| ↳ | Data Intern | Austin, TX | <a href="https://job-boards.greenhouse.io/acme/jobs/2"><img alt="Apply"></a> | Aug 21 |
+| **[Globex](https://globex.test)** | ML Intern 🔒 | NYC | <a href="https://globex.test/3">Apply</a> | Aug 20 |
+"""
+
+
+def test_markdown_pipe_table_flags_and_continuation(fixture_http):
+    http = fixture_http({"https://lists.test/": "=" + MD_TABLE})
+    ps = sources.github_list(http, "custom-internships", url="https://lists.test/README.md")
+    assert [(p.company, p.title) for p in ps] == [("Acme Robotics", "Software Intern"), ("Acme Robotics", "Data Intern")]
+    assert ps[0].flags == ["no_sponsorship"] and ps[0].remote
+    assert ps[0].url == "https://job-boards.greenhouse.io/acme/jobs/1"
