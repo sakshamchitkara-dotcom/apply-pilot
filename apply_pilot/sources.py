@@ -224,3 +224,20 @@ def careers_page(http: Http, url: str, company: str) -> list[Posting]:
             posted_at=j.get("datePosted", ""),
         ))
     return out
+
+
+FETCHERS = {"greenhouse": greenhouse, "lever": lever, "ashby": ashby, "smartrecruiters": smartrecruiters}
+
+
+def load_companies(path=None) -> list[dict]:
+    """Seed list (board tokens verified live 2026-09-25) or a user-supplied JSON file."""
+    import json
+    from pathlib import Path
+    p = Path(path) if path else Path(__file__).parent / "data" / "companies.json"
+    return json.loads(p.read_text())
+
+
+def fetch_company(http: Http, c: dict) -> list[Posting]:
+    if c["ats"] == "careers":
+        return careers_page(http, c["url"], c["name"])
+    return FETCHERS[c["ats"]](http, c["token"], c["name"])

@@ -84,3 +84,10 @@ def test_careers_page_respects_robots(fixture_http):
                          "https://careers.example.test/": "careers_jsonld.html"})
     with pytest.raises(RobotsDisallowed):
         sources.careers_page(http, "https://careers.example.test/jobs", "Example Widgets")
+
+
+def test_seed_companies_well_formed():
+    cs = sources.load_companies()
+    assert len(cs) >= 50
+    assert {c["ats"] for c in cs} <= set(sources.FETCHERS) | {"careers"}
+    assert len({(c["ats"], c["token"]) for c in cs}) == len(cs)
