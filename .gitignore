@@ -8,7 +8,6 @@ dist/
 # local state: database, HTTP cache, packets, your real resume/profile
 .apply-pilot/
 .env
-profile.json
-preferences.toml
-resume.*
-!examples/**
+/profile.json
+/preferences.toml
+/resume.*
