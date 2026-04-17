@@ -90,6 +90,44 @@ def heuristic_score(p: dict, profile: dict, prefs: dict) -> tuple[int, list[str]
     return round(min(100, skill_pts + role_pts + sen_pts + loc_pts)), reasons
 
 
+RUBRIC_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "score": {"type": "integer", "description": "0-100 overall fit"},
+        "reasons": {"type": "array", "items": {"type": "string"}},
+        "gaps": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["score", "reasons", "gaps"],
+    "additionalProperties": False,
+}
+RUBRIC_SYSTEM = """You score how well a candidate fits a job posting. Use only the candidate facts given.
+Rubric (100 total): required skills/technologies present in facts (40), relevant experience or projects (30),
+seniority/level fit (15), stated constraints such as location, visa, degree (15).
+Reasons must cite specific candidate facts. List missing requirements under gaps. Never assume unstated skills."""
+
+
+def claude_score(p: dict, profile: dict) -> tuple[int, list[str]] | None:
+    from . import llm
+    user = (f"CANDIDATE SKILLS: {', '.join(profile.get('skills', []))}\n"
+            "CANDIDATE FACTS:\n" + "\n".join(f"- {f}" for f in profile.get("facts", [])) +
+            f"\n\nJOB: {p['title']} at {p['company']} ({p.get('location') or 'n/a'})\n"
+            f"{(p.get('description') or '')[:8000]}")
+    out = llm.structured(RUBRIC_SYSTEM, user, RUBRIC_SCHEMA, effort="low", max_tokens=4000)
+    if not out:
+        return None
+    reasons = [f"claude: {r}" for r in out["reasons"]] + [f"gap: {g}" for g in out["gaps"]]
+    return max(0, min(100, int(out["score"]))), reasons
+
+
+def score(p: dict, profile: dict, prefs: dict, use_claude: bool = False) -> tuple[int, list[str]]:
+    """Claude rubric when requested and available, else the heuristic."""
+    if use_claude:
+        got = claude_score(p, profile)
+        if got:
+            return got
+    return heuristic_score(p, profile, prefs)
+
+
 if __name__ == "__main__":  # quick self-check
     prefs = dict(DEFAULT_PREFS, roles=["software"], seniority="internship", locations=["NYC"])
     p = {"title": "Software Engineer Intern", "company": "X", "location": "NYC", "description": "Python, Go"}
