@@ -2,10 +2,23 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from pathlib import Path
 
-from . import db, sources
+from . import db, match, resume, sources, tailor, tracker
 from .http import Http
+
+
+def _conn():
+    return tracker.init(db.connect())
+
+
+def _profile(args) -> dict:
+    p = Path(args.profile)
+    if not p.exists():
+        sys.exit(f"no profile at {p}; run: apply-pilot ingest-resume <resume file>")
+    return json.loads(p.read_text())
 
 
 def _companies(args):
@@ -49,6 +62,62 @@ def cmd_verify_companies(args):
     return 1 if bad else 0
 
 
+def cmd_ingest_resume(args):
+    prof = resume.ingest(args.file)
+    Path(args.profile).write_text(json.dumps(prof, indent=2))
+    print(f"profile -> {args.profile}: {prof['name']} | {len(prof['skills'])} skills | "
+          f"{len(prof['experience'])} roles | {len(prof['facts'])} facts")
+    print("skills:", ", ".join(prof["skills"]))
+
+
+def cmd_shortlist(args):
+    """Filter + score every posting that no human has acted on yet."""
+    conn, prefs, prof = _conn(), match.load_prefs(args.prefs), _profile(args)
+    todo = conn.execute(
+        "SELECT p.* FROM postings p LEFT JOIN applications a ON a.posting_id=p.id "
+        "WHERE a.status IS NULL OR a.status IN ('found','shortlisted')").fetchall()
+    passed = [dict(r) for r in todo if not match.check_filters(dict(r), prefs)]
+    # Heuristic ranks everything; the (paid) Claude rubric only re-scores the top candidates.
+    scored = sorted(((match.heuristic_score(p, prof, prefs), p) for p in passed), key=lambda t: -t[0][0])
+    for i, ((s, why), p) in enumerate(scored):
+        if args.claude and i < args.claude_top:
+            s, why = match.score(p, prof, prefs, use_claude=True)
+        tracker.upsert_score(conn, p["id"], s, why, "shortlisted" if s >= prefs["min_score"] else "found")
+    conn.commit()
+    n = conn.execute("SELECT count(*) FROM applications WHERE status='shortlisted'").fetchone()[0]
+    print(f"{len(todo)} candidates, {len(passed)} pass filters, {n} shortlisted (score >= {prefs['min_score']})")
+    _print_rows(tracker.rows(conn, "shortlisted", args.top))
+
+
+def _print_rows(rows):
+    for r in rows:
+        print(f"  [{r['score']:3}] {r['status']:12} {r['company'][:22]:22} {r['title'][:55]:55} "
+              f"{(r['location'] or '')[:28]:28} {r['posting_id']}")
+
+
+def cmd_list(args):
+    _print_rows(tracker.rows(_conn(), args.status, args.top))
+
+
+def _posting(conn, pid: str) -> dict:
+    r = conn.execute("SELECT * FROM postings WHERE id=?", (pid,)).fetchone()
+    if not r:
+        sys.exit(f"unknown posting id {pid}")
+    return dict(r)
+
+
+def cmd_tailor(args):
+    conn, prof = _conn(), _profile(args)
+    ids = args.ids or [r["posting_id"] for r in tracker.rows(conn, "shortlisted", args.top)]
+    for pid in ids:
+        post = _posting(conn, pid)
+        d = tailor.draft(prof, post, use_claude=args.claude)
+        out = tailor.write_packet(prof, post, d, args.resume)
+        conn.execute("UPDATE applications SET packet_dir=? WHERE posting_id=?", (str(out), pid))
+        conn.commit()
+        print(f"packet ({d['engine']}, {len(d['flags'])} flagged claims) -> {out}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="apply-pilot", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -62,6 +131,35 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--lists", help="GitHub lists to include: 'all' or comma list of "
                                    + ",".join(sources.GITHUB_LISTS))
     p.set_defaults(fn=cmd_fetch)
+
+    def profile_opts(p):
+        p.add_argument("--profile", default="profile.json")
+        p.add_argument("--prefs", default="preferences.toml")
+
+    p = sub.add_parser("ingest-resume", help="parse a PDF/DOCX/MD resume into profile.json")
+    p.add_argument("file")
+    p.add_argument("--profile", default="profile.json")
+    p.set_defaults(fn=cmd_ingest_resume)
+
+    p = sub.add_parser("shortlist", help="filter and score postings against your profile")
+    profile_opts(p)
+    p.add_argument("--claude", action="store_true", help="re-score the top matches with the Claude rubric")
+    p.add_argument("--claude-top", type=int, default=15)
+    p.add_argument("--top", type=int, default=20)
+    p.set_defaults(fn=cmd_shortlist)
+
+    p = sub.add_parser("list", help="list tracked applications")
+    p.add_argument("--status", choices=tracker.STATUSES)
+    p.add_argument("--top", type=int, default=50)
+    p.set_defaults(fn=cmd_list)
+
+    p = sub.add_parser("tailor", help="draft grounded application packets")
+    profile_opts(p)
+    p.add_argument("ids", nargs="*", help="posting ids (default: top shortlisted)")
+    p.add_argument("--top", type=int, default=3)
+    p.add_argument("--resume", help="resume file to include in the packet")
+    p.add_argument("--no-claude", dest="claude", action="store_false")
+    p.set_defaults(fn=cmd_tailor)
 
     p = sub.add_parser("verify-companies", help="check every board token is live (bypasses cache)")
     company_opts(p)

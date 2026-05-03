@@ -20,3 +20,17 @@ def test_fetch_command_is_idempotent(monkeypatch, capsys):
     assert n == 4 + 4 + 12
     cli.main(args)
     assert "0 new" in capsys.readouterr().out.splitlines()[-1]
+
+
+def test_pipeline_ingest_shortlist_tailor(monkeypatch, capsys, tmp_path):
+    from pathlib import Path
+    root = Path(__file__).parents[1]
+    monkeypatch.setattr(http_mod.Http, "_raw_get", fake_raw_get)
+    prof, prefs = str(tmp_path / "profile.json"), str(root / "examples" / "preferences.toml")
+    cli.main(["ingest-resume", str(root / "examples" / "sample_resume.md"), "--profile", prof])
+    cli.main(["fetch", "--only", "stripe,palantir", "--lists", "simplify-internships"])
+    cli.main(["shortlist", "--profile", prof, "--prefs", prefs])
+    out = capsys.readouterr().out
+    assert "shortlisted" in out
+    cli.main(["tailor", "--profile", prof, "--prefs", prefs, "--top", "1"])
+    assert "packet (template, 0 flagged claims)" in capsys.readouterr().out
