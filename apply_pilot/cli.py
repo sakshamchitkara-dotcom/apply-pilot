@@ -118,6 +118,53 @@ def cmd_tailor(args):
         print(f"packet ({d['engine']}, {len(d['flags'])} flagged claims) -> {out}")
 
 
+def cmd_review(args):
+    """The human approval gate: nothing moves to 'approved' except through here."""
+    import os
+    import subprocess
+    conn, prof = _conn(), _profile(args)
+    for r in tracker.rows(conn, "shortlisted", args.top):
+        post = _posting(conn, r["posting_id"])
+        pdir = Path(r["packet_dir"]) if r["packet_dir"] else None
+        if not pdir or not pdir.exists():
+            d = tailor.draft(prof, post, use_claude=args.claude)
+            pdir = tailor.write_packet(prof, post, d, args.resume)
+            conn.execute("UPDATE applications SET packet_dir=? WHERE posting_id=?", (str(pdir), post["id"]))
+            conn.commit()
+        while True:
+            pk = json.loads((pdir / "packet.json").read_text())
+            print("\n" + "=" * 78)
+            print(f"[{r['score']}] {post['title']} @ {post['company']} ({post['location'] or 'n/a'})")
+            print(f"apply: {post['apply_url'] or post['url']}")
+            for why in json.loads(r["reasons"]):
+                print(f"  - {why}")
+            print(f"packet: {pdir}\n--- cover letter ---\n{(pdir / 'cover_letter.md').read_text()}")
+            if pk["flags"]:
+                print("!!! claims not found in your resume (fix before approving):")
+                for f in pk["flags"]:
+                    print(f"  ! {f}")
+            choice = input("[a]pprove  [s]kip  [e]dit  [n]ext  [q]uit > ").strip().lower()[:1]
+            if choice == "e":
+                subprocess.call([os.environ.get("EDITOR", "vi"), str(pdir / "cover_letter.md")])
+                text = (pdir / "cover_letter.md").read_text()
+                pk["cover_letter"], pk["flags"] = text, tailor.flag_unsupported(text, prof, post)
+                (pdir / "packet.json").write_text(json.dumps(pk, indent=2))
+                continue
+            if choice == "a":
+                tracker.set_status(conn, post["id"], "approved", "approved in review")
+                print("approved. Next: apply-pilot apply", post["id"])
+            elif choice == "s":
+                tracker.set_status(conn, post["id"], "skipped", "skipped in review")
+            elif choice == "q":
+                return
+            break
+
+
+def cmd_mark(args):
+    tracker.set_status(_conn(), args.id, args.status, args.note or "")
+    print(f"{args.id} -> {args.status}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="apply-pilot", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -160,6 +207,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--resume", help="resume file to include in the packet")
     p.add_argument("--no-claude", dest="claude", action="store_false")
     p.set_defaults(fn=cmd_tailor)
+
+    p = sub.add_parser("review", help="approve / skip / edit each shortlisted application")
+    profile_opts(p)
+    p.add_argument("--top", type=int, default=20)
+    p.add_argument("--resume", help="resume file to include in packets")
+    p.add_argument("--no-claude", dest="claude", action="store_false")
+    p.set_defaults(fn=cmd_review)
+
+    p = sub.add_parser("mark", help="record a status change (e.g. applied, interviewing, offer, rejected)")
+    p.add_argument("id")
+    p.add_argument("status", choices=tracker.STATUSES)
+    p.add_argument("--note")
+    p.set_defaults(fn=cmd_mark)
 
     p = sub.add_parser("verify-companies", help="check every board token is live (bypasses cache)")
     company_opts(p)
