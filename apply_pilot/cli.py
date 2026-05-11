@@ -160,6 +160,27 @@ def cmd_review(args):
             break
 
 
+def cmd_apply(args):
+    """Assisted apply for an APPROVED application. The human always does the final submit."""
+    conn = _conn()
+    row = conn.execute("SELECT status, packet_dir FROM applications WHERE posting_id=?", (args.id,)).fetchone()
+    if not row or row["status"] != "approved":
+        sys.exit(f"refusing: {args.id} is {row['status'] if row else 'untracked'}, not approved. "
+                 "Run `apply-pilot review` first.")
+    post = _posting(conn, args.id)
+    url = args.url or post["apply_url"] or post["url"]
+    print(f"packet: {row['packet_dir']}\napply at: {url}")
+    if args.browser:
+        from . import fill
+        fill.fill(url, row["packet_dir"], headless=args.headless, screenshot=args.screenshot,
+                  wait_for_human=not args.headless)
+    else:
+        print("Open the link, paste from the packet files, and submit yourself.")
+    if not args.headless and input("Did YOU submit the application? [y/N] ").strip().lower() == "y":
+        tracker.set_status(conn, args.id, "applied", "submitted by human")
+        print("marked applied; follow-up reminder set")
+
+
 def cmd_mark(args):
     tracker.set_status(_conn(), args.id, args.status, args.note or "")
     print(f"{args.id} -> {args.status}")
@@ -214,6 +235,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--resume", help="resume file to include in packets")
     p.add_argument("--no-claude", dest="claude", action="store_false")
     p.set_defaults(fn=cmd_review)
+
+    p = sub.add_parser("apply", help="assisted apply for an approved application (you click submit)")
+    p.add_argument("id")
+    p.add_argument("--browser", action="store_true", help="open a headed browser and pre-fill the form")
+    p.add_argument("--url", help="override the form URL (e.g. the local fixture form)")
+    p.add_argument("--headless", action="store_true", help="demo/test mode: fill, screenshot, close")
+    p.add_argument("--screenshot")
+    p.set_defaults(fn=cmd_apply)
 
     p = sub.add_parser("mark", help="record a status change (e.g. applied, interviewing, offer, rejected)")
     p.add_argument("id")
