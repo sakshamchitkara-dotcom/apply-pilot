@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Local test fixture: a fictional job application form. NOT a real company. -->
+<html lang="en"><head><meta charset="utf-8"><title>Example Corp (fictional) - Apply</title>
+<style>body{font-family:system-ui;max-width:640px;margin:2rem auto}label{display:block;margin-top:.8rem}
+input,textarea{width:100%;padding:.4rem}textarea{height:8rem}</style></head>
+<body>
+<h1>Apply: Backend Engineer Intern (fictional)</h1>
+<form id="application" action="/submit" method="post" enctype="multipart/form-data">
+  <label for="first_name">First name *</label><input id="first_name" name="first_name" required>
+  <label for="last_name">Last name *</label><input id="last_name" name="last_name" required>
+  <label for="email">Email *</label><input id="email" name="email" type="email" required>
+  <label for="phone">Phone</label><input id="phone" name="phone" type="tel">
+  <label for="github">GitHub or portfolio URL</label><input id="github" name="urls[GitHub]">
+  <label for="resume">Resume/CV *</label><input id="resume" name="resume" type="file" required>
+  <label for="cover_letter">Cover letter</label><textarea id="cover_letter" name="cover_letter"></textarea>
+  <label for="q_why">Why do you want to work at Example Corp? *</label><textarea id="q_why" name="question_why" required></textarea>
+  <label for="q_auth">Are you legally authorized to work in the US? *</label>
+  <select id="q_auth" name="work_auth" required><option value="">Select...</option><option>Yes</option><option>No</option></select>
+  <p><button type="submit" id="submit_app">Submit application</button></p>
+</form>
+</body></html>
