@@ -72,3 +72,10 @@ def test_apply_refuses_unapproved(monkeypatch, tmp_path):
     with pytest.raises(SystemExit) as e:
         cli.main(["apply", pid, "--browser"])
     assert "not approved" in str(e.value)
+
+
+def test_remind_and_export(capsys, tmp_path):
+    cli.main(["remind"])
+    assert "no follow-ups due" in capsys.readouterr().out
+    cli.main(["export", "--out", str(tmp_path / "a.csv")])
+    assert (tmp_path / "a.csv").read_text().startswith("status,score")
