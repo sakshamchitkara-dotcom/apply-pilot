@@ -1,0 +1,32 @@
+# Example GitHub Actions workflow: copy to .github/workflows/ in a PRIVATE repo
+# that holds your profile.json and preferences.toml. It only fetches, shortlists
+# and sends a digest. It never tailors, approves or applies to anything.
+name: daily-shortlist
+on:
+  schedule:
+    - cron: "0 13 * * *"   # daily 13:00 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  shortlist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "apply-pilot @ git+https://github.com/sakshamchitkara-dotcom/apply-pilot"
+      # Cache the sqlite db + HTTP cache between runs so dedupe and "new since yesterday" work.
+      - uses: actions/cache@v4
+        with:
+          path: .apply-pilot
+          key: apply-pilot-${{ github.run_id }}
+          restore-keys: apply-pilot-
+      - run: apply-pilot daily --lists all --send
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
