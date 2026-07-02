@@ -79,3 +79,18 @@ def test_remind_and_export(capsys, tmp_path):
     assert "no follow-ups due" in capsys.readouterr().out
     cli.main(["export", "--out", str(tmp_path / "a.csv")])
     assert (tmp_path / "a.csv").read_text().startswith("status,score")
+
+
+def test_daily_never_applies(monkeypatch, capsys, tmp_path):
+    from pathlib import Path
+    from apply_pilot import tracker
+    root = Path(__file__).parents[1]
+    monkeypatch.setattr(http_mod.Http, "_raw_get", fake_raw_get)
+    prof = str(tmp_path / "profile.json")
+    cli.main(["ingest-resume", str(root / "examples" / "sample_resume.md"), "--profile", prof])
+    cli.main(["daily", "--only", "stripe,palantir", "--lists", "simplify-internships", "--profile", prof,
+              "--prefs", str(root / "examples" / "preferences.toml")])
+    out = capsys.readouterr().out
+    assert "new shortlisted role" in out and "dry run" in out
+    statuses = {r["status"] for r in tracker.rows(tracker.init(db.connect()))}
+    assert statuses <= {"found", "shortlisted"}
