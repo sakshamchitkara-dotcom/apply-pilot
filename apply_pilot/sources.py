@@ -157,7 +157,7 @@ def github_list(http: Http, name: str, url: str | None = None) -> list[Posting]:
         text = [strip_html(c.replace("<br>", "; ")) for c in cells]
         # Collapsed multi-location cells look like "<summary>4 locations</summary>A<br>B"
         text[2] = re.sub(r"^\*{0,2}\d+ locations\*{0,2}\s*", "", text[2]).replace("\n", "; ")
-        name_cell = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text[0]).strip("* ")
+        name_cell = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text[0]).replace("🔥", "").strip("* ")  # 🔥 = list's "FAANG+" marker
         company = company if name_cell in ("↳", "") else name_cell
         raw = " ".join(text)
         flags = [f for e, f in FLAG_EMOJI.items() if e in raw]
