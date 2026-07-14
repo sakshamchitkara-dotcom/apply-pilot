@@ -42,3 +42,8 @@ def test_write_packet(tmp_path):
     assert {p.name for p in out.iterdir()} == {"cover_letter.md", "answers.md", "REVIEW.md", "packet.json", "sample_resume.md"}
     pk = json.loads((out / "packet.json").read_text())
     assert pk["applicant"]["email"] == "riley.quinn@example.com"
+
+
+def test_numbers_from_the_posting_title_are_not_flagged():
+    post = dict(POST, title="Software Engineer Intern (Summer 2027)")
+    assert tailor.draft(PROFILE, post, use_claude=False)["flags"] == []

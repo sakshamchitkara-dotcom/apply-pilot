@@ -100,7 +100,8 @@ def claude_draft(profile: dict, posting: dict) -> dict | None:
 def flag_unsupported(text: str, profile: dict, posting: dict) -> list[str]:
     """Sentences that assert numbers or skills not found in the resume (posting numbers are allowed)."""
     resume_text = profile.get("raw_text", "") + "\n" + "\n".join(profile.get("facts", []))
-    allowed_nums = set(re.findall(r"\d[\d,.]*", resume_text + (posting.get("description") or "")))
+    posting_text = f"{posting['title']} {posting['company']} {posting.get('description') or ''}"
+    allowed_nums = {n.rstrip(".,") for n in re.findall(r"\d[\d,.]*", resume_text + "\n" + posting_text)}
     have = set(profile.get("skills", []))
     flags = []
     for sent in re.split(r"(?<=[.!?])\s+|\n+", text):
