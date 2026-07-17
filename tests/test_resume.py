@@ -9,6 +9,7 @@ def test_markdown_resume_to_profile():
     p = resume.ingest(SAMPLE)
     assert p["name"] == "Riley Quinn"
     assert p["email"] == "riley.quinn@example.com"
+    assert p["phone"] == "(555) 010-0142"
     for s in ["Python", "TypeScript", "Go", "PostgreSQL", "Docker", "FastAPI", "AWS"]:
         assert s in p["skills"], s
     assert "Kubernetes" not in p["skills"]

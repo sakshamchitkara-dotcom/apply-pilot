@@ -59,7 +59,7 @@ def parse_text(text: str) -> dict:
     nonempty = [l for l in lines if l.strip()]
     name = re.sub(r"^#+\s*", "", nonempty[0]).strip() if nonempty else ""
     email = re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text)
-    phone = re.search(r"\+?\d[\d\s().-]{7,}\d", text)
+    phone = re.search(r"\+?\(?\d[\d\s().-]{7,}\d", text)
     links = re.findall(r"(?:https?://)?(?:www\.)?(?:github\.com|linkedin\.com/in|[\w-]+\.(?:dev|io|me))/?[\w./-]*", text)
 
     sections: dict[str, list[str]] = {"header": []}
