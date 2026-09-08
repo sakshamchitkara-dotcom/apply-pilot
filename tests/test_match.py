@@ -55,3 +55,11 @@ def test_thin_postings_do_not_score_perfect():
     thin, _ = match.heuristic_score(post(title="Python Software Engineer Intern", description=""), PROFILE, PREFS)
     rich, _ = match.heuristic_score(post(description="Python, PostgreSQL, Docker, FastAPI, Redis"), PROFILE, PREFS)
     assert thin < rich == 100
+
+
+def test_passing_filters_alone_does_not_shortlist():
+    """Calibration: role/seniority/location fit is implied by the filters, so it can't clear min_score alone."""
+    no_evidence, _ = match.heuristic_score(post(title="Software Engineer Intern", description=""), PROFILE, PREFS)
+    wrong_stack, _ = match.heuristic_score(post(description="Kotlin, Swift, iOS, Android"), PROFILE, PREFS)
+    some_overlap, _ = match.heuristic_score(post(description="Python and Kubernetes"), PROFILE, PREFS)
+    assert wrong_stack < no_evidence < PREFS["min_score"] <= some_overlap

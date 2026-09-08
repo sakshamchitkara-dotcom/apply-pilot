@@ -59,6 +59,9 @@ def check_filters(p: dict, prefs: dict) -> str | None:
     return None
 
 
+NEUTRAL_SKILL_PTS = 12  # skill credit when the posting gives no evidence either way
+
+
 def heuristic_score(p: dict, profile: dict, prefs: dict) -> tuple[int, list[str]]:
     """0-100 score from skill overlap, role/seniority/location fit. Deterministic, offline."""
     text = f"{p['title']}\n{p.get('description') or ''}"
@@ -67,26 +70,30 @@ def heuristic_score(p: dict, profile: dict, prefs: dict) -> tuple[int, list[str]
     hit = [s for s in job_skills if s in have]
     miss = [s for s in job_skills if s not in have]
     reasons = []
+    # Calibration: anything that passes the hard filters already earns most of the
+    # role/seniority/location points, so those are capped at 40 and skill evidence
+    # carries 60. A posting with no skill evidence lands at ~52, just under the
+    # example min_score of 55; it has to show overlap to be shortlisted.
     if job_skills:
         # A title-only listing naming one skill shouldn't count as a perfect match:
-        # blend towards a neutral 10 until the posting names ~4 skills.
+        # blend towards a neutral 12 until the posting names ~4 skills.
         conf = min(1.0, len(job_skills) / 4)
-        skill_pts = conf * 50 * len(hit) / len(job_skills) + (1 - conf) * 10
+        skill_pts = conf * 60 * len(hit) / len(job_skills) + (1 - conf) * NEUTRAL_SKILL_PTS
         reasons.append(f"skills {len(hit)}/{len(job_skills)}: {', '.join(hit) or '-'}"
                        + (f"; missing {', '.join(miss[:6])}" if miss else ""))
     else:
-        skill_pts = 10
+        skill_pts = NEUTRAL_SKILL_PTS
         reasons.append("no recognisable skills in posting text")
-    role_pts = 25 if prefs["roles"] and _any_in(prefs["roles"], p["title"]) else (10 if not prefs["roles"] else 0)
-    if role_pts == 25:
+    role_pts = 20 if prefs["roles"] and _any_in(prefs["roles"], p["title"]) else (8 if not prefs["roles"] else 0)
+    if role_pts == 20:
         reasons.append("title matches preferred role")
     sen_pts = 0
     if prefs["seniority"] == "internship" and INTERN_RE.search(p["title"]):
-        sen_pts = 15
+        sen_pts = 10
     elif prefs["seniority"] == "new_grad" and NEWGRAD_RE.search(p["title"]):
-        sen_pts = 15
+        sen_pts = 10
     elif prefs["seniority"] == "any":
-        sen_pts = 8
+        sen_pts = 5
     loc_pts = 10 if (p.get("remote") and prefs["remote_ok"]) or _any_in(prefs["locations"], p.get("location") or "") else 0
     if loc_pts:
         reasons.append("location fits")
@@ -135,4 +142,5 @@ if __name__ == "__main__":  # quick self-check
     prefs = dict(DEFAULT_PREFS, roles=["software"], seniority="internship", locations=["NYC"])
     p = {"title": "Software Engineer Intern", "company": "X", "location": "NYC", "description": "Python, Go"}
     assert check_filters(p, prefs) is None
-    assert heuristic_score(p, {"skills": ["Python", "Go"]}, prefs)[0] == 100
+    assert heuristic_score(p, {"skills": ["Python", "Go"]}, prefs)[0] == 76  # 2 named skills: half confidence
+    assert heuristic_score(dict(p, description=""), {"skills": []}, prefs)[0] == 52  # no evidence: below 55
