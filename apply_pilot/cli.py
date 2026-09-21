@@ -32,7 +32,7 @@ def _companies(args):
 def cmd_fetch(args):
     http, conn = Http(), db.connect()
     total_new = total_dup = 0
-    jobs = [(c["name"], lambda c=c: sources.fetch_company(http, c)) for c in _companies(args)]
+    jobs = [(c["name"], lambda c=c: sources.fetch_company(http, c, args.sr_max_pages)) for c in _companies(args)]
     lists = sources.GITHUB_LISTS if args.lists == "all" else \
         {k: sources.GITHUB_LISTS[k] for k in (args.lists.split(",") if args.lists else [])}
     jobs += [(f"github:{k}", lambda k=k: sources.github_list(http, k)) for k in lists]
@@ -54,7 +54,7 @@ def cmd_verify_companies(args):
     bad = 0
     for c in _companies(args):
         try:
-            n = len(sources.fetch_company(http, c))
+            n = len(sources.fetch_company(http, c, args.sr_max_pages))
             print(f"  ok   {c['ats']:15} {c.get('token', c.get('url')):20} {n} postings")
         except Exception as e:
             bad += 1
@@ -248,6 +248,8 @@ def build_parser() -> argparse.ArgumentParser:
     def company_opts(p):
         p.add_argument("--companies", help="JSON company list (default: bundled seed list)")
         p.add_argument("--only", help="comma-separated company names/tokens")
+        p.add_argument("--sr-max-pages", type=int, default=5,
+                       help="SmartRecruiters pages (100 postings each) per board; 0 = no cap (default 5)")
 
     p = sub.add_parser("fetch", help="fetch postings from company boards and GitHub lists")
     company_opts(p)

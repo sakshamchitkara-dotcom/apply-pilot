@@ -88,13 +88,23 @@ def ashby(http: Http, token: str, company: str | None = None) -> list[Posting]:
     return out
 
 
-def smartrecruiters(http: Http, token: str, company: str | None = None, max_pages: int = 5) -> list[Posting]:
-    """SmartRecruiters public Posting API. List endpoint has no description body;
-    we keep the listing fields and let matching work from title/department."""
-    out = []
-    for page in range(max_pages):  # ponytail: page cap keeps huge boards (Bosch: ~5k) cheap
+def smartrecruiters(http: Http, token: str, company: str | None = None, max_pages: int | None = 5) -> list[Posting]:
+    """SmartRecruiters public Posting API, 100 postings per page.
+
+    `max_pages` caps the requests per board (Bosch alone has ~4,800 postings);
+    None or 0 fetches every page. A capped board prints how much was skipped.
+    The list endpoint has no description body; see `smartrecruiters_details`."""
+    import itertools
+    import sys
+    out, total = [], 0
+    for page in itertools.count():
+        if max_pages and page >= max_pages:
+            print(f"  ! smartrecruiters:{token}: stopped at {len(out)} of {total} postings "
+                  f"(--sr-max-pages {max_pages}; 0 = no cap)", file=sys.stderr)
+            break
         data = http.get_json(f"https://api.smartrecruiters.com/v1/companies/{token}/postings"
                              f"?limit=100&offset={page * 100}")
+        total = data.get("totalFound", 0)
         for j in data.get("content", []):
             loc = j.get("location") or {}
             desc = " / ".join(filter(None, [(j.get("department") or {}).get("label"),
@@ -112,7 +122,7 @@ def smartrecruiters(http: Http, token: str, company: str | None = None, max_page
                 employment_type=(j.get("typeOfEmployment") or {}).get("label", ""),
                 posted_at=j.get("releasedDate", ""),
             ))
-        if (page + 1) * 100 >= data.get("totalFound", 0):
+        if not data.get("content") or (page + 1) * 100 >= total:
             break
     return out
 
@@ -237,7 +247,9 @@ def load_companies(path=None) -> list[dict]:
     return json.loads(p.read_text())
 
 
-def fetch_company(http: Http, c: dict) -> list[Posting]:
+def fetch_company(http: Http, c: dict, sr_max_pages: int | None = 5) -> list[Posting]:
     if c["ats"] == "careers":
         return careers_page(http, c["url"], c["name"])
+    if c["ats"] == "smartrecruiters":
+        return smartrecruiters(http, c["token"], c["name"], max_pages=sr_max_pages)
     return FETCHERS[c["ats"]](http, c["token"], c["name"])

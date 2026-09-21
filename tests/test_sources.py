@@ -91,3 +91,20 @@ def test_seed_companies_well_formed():
     assert len(cs) >= 50
     assert {c["ats"] for c in cs} <= set(sources.FETCHERS) | {"careers"}
     assert len({(c["ats"], c["token"]) for c in cs}) == len(cs)
+
+
+def _sr_page(offset, total):
+    import json
+    n = min(100, total - offset)
+    return "=" + json.dumps({"totalFound": total, "content": [
+        {"id": str(offset + i), "name": f"Job {offset + i}", "location": {}} for i in range(n)]})
+
+
+def test_smartrecruiters_pagination_cap(fixture_http, capsys):
+    base = "https://api.smartrecruiters.com/v1/companies/Big/postings?limit=100&offset="
+    routes = {f"{base}{o}": _sr_page(o, 250) for o in (0, 100, 200)}
+    assert len(sources.smartrecruiters(fixture_http(routes), "Big", max_pages=2)) == 200
+    assert "stopped at 200 of 250" in capsys.readouterr().err
+    ps = sources.smartrecruiters(fixture_http(routes), "Big", max_pages=0)
+    assert len(ps) == 250 and len({p.id for p in ps}) == 250
+    assert capsys.readouterr().err == ""
