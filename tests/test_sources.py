@@ -108,3 +108,16 @@ def test_smartrecruiters_pagination_cap(fixture_http, capsys):
     ps = sources.smartrecruiters(fixture_http(routes), "Big", max_pages=0)
     assert len(ps) == 250 and len({p.id for p in ps}) == 250
     assert capsys.readouterr().err == ""
+
+
+def test_smartrecruiters_details(fixture_http):
+    import json
+    detail = {"applyUrl": "https://jobs.smartrecruiters.com/Big/7-intern?oga=true", "jobAd": {"sections": {
+        "companyDescription": {"title": "Company", "text": "<p>We use Kubernetes</p>"},
+        "jobDescription": {"title": "Job Description", "text": "<p>Build services in <b>Python</b></p>"},
+        "qualifications": {"title": "Qualifications", "text": "<ul><li>PostgreSQL</li></ul>"}}}}
+    http = fixture_http({"https://api.smartrecruiters.com/v1/companies/Big/postings/7": "=" + json.dumps(detail)})
+    body, apply_url = sources.smartrecruiters_details(http, "Big", "7")
+    assert "Build services in Python" in body and "PostgreSQL" in body
+    assert "Kubernetes" not in body  # company boilerplate is not the job's requirements
+    assert apply_url.endswith("oga=true")
