@@ -1,0 +1,3 @@
+# Local cron alternative (crontab -e). Fetch + shortlist + digest only; never applies.
+# 08:00 every day, from the directory holding profile.json and preferences.toml
+0 8 * * * cd $HOME/job-search && $HOME/.venvs/apply-pilot/bin/apply-pilot daily --lists all >> daily.log 2>&1
