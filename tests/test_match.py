@@ -49,3 +49,9 @@ def test_claude_score_used_when_available(monkeypatch):
 def test_claude_unavailable_falls_back():
     s, why = match.score(post(), PROFILE, PREFS, use_claude=True)  # no API key in tests
     assert (s, why) == match.heuristic_score(post(), PROFILE, PREFS)
+
+
+def test_thin_postings_do_not_score_perfect():
+    thin, _ = match.heuristic_score(post(title="Python Software Engineer Intern", description=""), PROFILE, PREFS)
+    rich, _ = match.heuristic_score(post(description="Python, PostgreSQL, Docker, FastAPI, Redis"), PROFILE, PREFS)
+    assert thin < rich == 100

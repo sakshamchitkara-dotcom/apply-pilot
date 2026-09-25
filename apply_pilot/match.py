@@ -68,7 +68,10 @@ def heuristic_score(p: dict, profile: dict, prefs: dict) -> tuple[int, list[str]
     miss = [s for s in job_skills if s not in have]
     reasons = []
     if job_skills:
-        skill_pts = 50 * len(hit) / len(job_skills)
+        # A title-only listing naming one skill shouldn't count as a perfect match:
+        # blend towards a neutral 20 until the posting names ~4 skills.
+        conf = min(1.0, len(job_skills) / 4)
+        skill_pts = conf * 50 * len(hit) / len(job_skills) + (1 - conf) * 20
         reasons.append(f"skills {len(hit)}/{len(job_skills)}: {', '.join(hit) or '-'}"
                        + (f"; missing {', '.join(miss[:6])}" if miss else ""))
     else:
