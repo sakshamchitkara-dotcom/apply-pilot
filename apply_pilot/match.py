@@ -69,13 +69,13 @@ def heuristic_score(p: dict, profile: dict, prefs: dict) -> tuple[int, list[str]
     reasons = []
     if job_skills:
         # A title-only listing naming one skill shouldn't count as a perfect match:
-        # blend towards a neutral 20 until the posting names ~4 skills.
+        # blend towards a neutral 10 until the posting names ~4 skills.
         conf = min(1.0, len(job_skills) / 4)
-        skill_pts = conf * 50 * len(hit) / len(job_skills) + (1 - conf) * 20
+        skill_pts = conf * 50 * len(hit) / len(job_skills) + (1 - conf) * 10
         reasons.append(f"skills {len(hit)}/{len(job_skills)}: {', '.join(hit) or '-'}"
                        + (f"; missing {', '.join(miss[:6])}" if miss else ""))
     else:
-        skill_pts = 20
+        skill_pts = 10
         reasons.append("no recognisable skills in posting text")
     role_pts = 25 if prefs["roles"] and _any_in(prefs["roles"], p["title"]) else (10 if not prefs["roles"] else 0)
     if role_pts == 25:
