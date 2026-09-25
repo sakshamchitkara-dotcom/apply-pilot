@@ -199,6 +199,16 @@ def cmd_export(args):
     print(f"wrote {n} rows -> {args.out}")
 
 
+def cmd_dashboard(args):
+    from . import dashboard
+    srv = dashboard.serve(args.port)
+    print(f"dashboard on http://127.0.0.1:{srv.server_port} (Ctrl-C to stop)")
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="apply-pilot", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -269,6 +279,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("export", help="export the tracker to CSV")
     p.add_argument("--out", default="applications.csv")
     p.set_defaults(fn=cmd_export)
+
+    p = sub.add_parser("dashboard", help="local web dashboard for the tracker")
+    p.add_argument("--port", type=int, default=8765)
+    p.set_defaults(fn=cmd_dashboard)
 
     p = sub.add_parser("verify-companies", help="check every board token is live (bypasses cache)")
     company_opts(p)
