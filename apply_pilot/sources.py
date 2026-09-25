@@ -59,3 +59,30 @@ def lever(http: Http, token: str, company: str | None = None) -> list[Posting]:
             posted_at=str(j.get("createdAt", "")),
         ))
     return out
+
+
+def _ashby_salary_min(comp: dict | None) -> int | None:
+    for c in (comp or {}).get("summaryComponents", []):
+        if c.get("compensationType") == "Salary" and c.get("interval") == "1 YEAR" and c.get("minValue"):
+            return int(c["minValue"])
+    return None
+
+
+def ashby(http: Http, token: str, company: str | None = None) -> list[Posting]:
+    data = http.get_json(f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true")
+    out = []
+    for j in data.get("jobs", []):
+        if j.get("isListed") is False:
+            continue
+        locs = [j.get("location", "")] + [s.get("location", "") for s in j.get("secondaryLocations", [])]
+        out.append(Posting(
+            source="ashby", board=token, external_id=j["id"], company=company or token,
+            title=j["title"].strip(), location="; ".join(l for l in locs if l),
+            remote=bool(j.get("isRemote")) or j.get("workplaceType") == "Remote",
+            url=j["jobUrl"], apply_url=j.get("applyUrl", j["jobUrl"]),
+            description=j.get("descriptionPlain") or strip_html(j.get("descriptionHtml", "")),
+            employment_type=j.get("employmentType", ""),
+            salary_min=_ashby_salary_min(j.get("compensation")),
+            posted_at=j.get("publishedAt", ""),
+        ))
+    return out
