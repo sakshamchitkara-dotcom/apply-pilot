@@ -186,6 +186,19 @@ def cmd_mark(args):
     print(f"{args.id} -> {args.status}")
 
 
+def cmd_remind(args):
+    due = tracker.due_follow_ups(_conn())
+    if not due:
+        print("no follow-ups due")
+    for r in due:
+        print(f"  follow up: {r['company']} - {r['title']} ({r['status']} since {r['updated_at'][:10]}) {r['posting_id']}")
+
+
+def cmd_export(args):
+    n = tracker.export_csv(_conn(), args.out)
+    print(f"wrote {n} rows -> {args.out}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="apply-pilot", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -249,6 +262,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("status", choices=tracker.STATUSES)
     p.add_argument("--note")
     p.set_defaults(fn=cmd_mark)
+
+    p = sub.add_parser("remind", help="show applications due for a follow-up")
+    p.set_defaults(fn=cmd_remind)
+
+    p = sub.add_parser("export", help="export the tracker to CSV")
+    p.add_argument("--out", default="applications.csv")
+    p.set_defaults(fn=cmd_export)
 
     p = sub.add_parser("verify-companies", help="check every board token is live (bypasses cache)")
     company_opts(p)
