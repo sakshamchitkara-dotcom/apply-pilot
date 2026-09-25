@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+# local state: database, HTTP cache, packets, your real resume/profile
+.apply-pilot/
+.env
+profile.json
+preferences.toml
+resume.*
+!examples/**

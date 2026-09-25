@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apply-pilot"
+version = "0.1.0"
+description = "Find job/internship postings from public ATS APIs, match them to your resume, draft grounded applications, and apply only with per-application human approval."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "tomli>=2; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+claude = ["anthropic>=1.0"]
+pdf = ["pypdf>=4"]
+docx = ["python-docx>=1"]
+browser = ["playwright>=1.40"]
+all = ["anthropic>=1.0", "pypdf>=4", "python-docx>=1", "playwright>=1.40"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+apply-pilot = "apply_pilot.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["apply_pilot*"]
+
+[tool.setuptools.package-data]
+apply_pilot = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
