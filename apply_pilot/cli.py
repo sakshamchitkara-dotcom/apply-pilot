@@ -73,6 +73,8 @@ def cmd_ingest_resume(args):
 def cmd_shortlist(args):
     """Filter + score every posting that no human has acted on yet."""
     conn, prefs, prof = _conn(), match.load_prefs(args.prefs), _profile(args)
+    if args.min_score is not None:
+        prefs["min_score"] = args.min_score
     todo = conn.execute(
         "SELECT p.* FROM postings p LEFT JOIN applications a ON a.posting_id=p.id "
         "WHERE a.status IS NULL OR a.status IN ('found','shortlisted')").fetchall()
@@ -86,7 +88,18 @@ def cmd_shortlist(args):
     conn.commit()
     n = conn.execute("SELECT count(*) FROM applications WHERE status='shortlisted'").fetchone()[0]
     print(f"{len(todo)} candidates, {len(passed)} pass filters, {n} shortlisted (score >= {prefs['min_score']})")
+    if scored:
+        print("score distribution of postings that passed filters (pick min_score from this):")
+        print(_histogram([s for (s, _), _ in scored], prefs["min_score"]))
     _print_rows(tracker.rows(conn, "shortlisted", args.top))
+
+
+def _histogram(scores: list[int], cut: int, width: int = 40) -> str:
+    buckets = {b: sum(1 for s in scores if b <= s < b + 10 or (b == 90 and s == 100)) for b in range(0, 100, 10)}
+    top = max(buckets.values()) or 1
+    return "\n".join(f"  {b:3}-{b + 9 if b < 90 else 100:<3} {'#' * max(n and 1, round(width * n / top)):{width}} {n:5}"
+                     + ("  <- min_score" if b <= cut < b + 10 else "")
+                     for b, n in buckets.items() if n or b <= cut < b + 10)
 
 
 def _print_rows(rows):
@@ -256,6 +269,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--claude", action="store_true", help="re-score the top matches with the Claude rubric")
     p.add_argument("--claude-top", type=int, default=15)
     p.add_argument("--top", type=int, default=20)
+    p.add_argument("--min-score", type=int, help="override min_score from preferences for this run")
     p.set_defaults(fn=cmd_shortlist)
 
     p = sub.add_parser("list", help="list tracked applications")
@@ -319,6 +333,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--claude", action="store_true")
     p.add_argument("--claude-top", type=int, default=15)
     p.add_argument("--top", type=int, default=20)
+    p.add_argument("--min-score", type=int, help="override min_score from preferences for this run")
     p.set_defaults(fn=cmd_daily)
 
     p = sub.add_parser("verify-companies", help="check every board token is live (bypasses cache)")
