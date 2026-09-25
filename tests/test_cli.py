@@ -58,3 +58,17 @@ def test_review_gate(monkeypatch, capsys, tmp_path):
     assert st[ids[0]] == "approved" and st[ids[1]] == "skipped"
     cli.main(["mark", ids[0], "applied", "--note", "submitted by hand"])
     assert tracker.rows(conn, "applied")[0]["follow_up_at"]
+
+
+def test_apply_refuses_unapproved(monkeypatch, tmp_path):
+    import pytest
+    from apply_pilot import tracker
+    monkeypatch.setattr(http_mod.Http, "_raw_get", fake_raw_get)
+    cli.main(["fetch", "--only", "stripe"])
+    conn = tracker.init(db.connect())
+    pid = conn.execute("SELECT id FROM postings LIMIT 1").fetchone()[0]
+    tracker.upsert_score(conn, pid, 90, [], "shortlisted")
+    conn.commit()
+    with pytest.raises(SystemExit) as e:
+        cli.main(["apply", pid, "--browser"])
+    assert "not approved" in str(e.value)
