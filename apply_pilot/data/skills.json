@@ -1,0 +1,272 @@
+{
+ "Python": [
+  "python",
+  "python3"
+ ],
+ "Java": [
+  "java"
+ ],
+ "JavaScript": [
+  "javascript",
+  "node.js",
+  "nodejs",
+  "=JS",
+  "=Node"
+ ],
+ "TypeScript": [
+  "typescript",
+  "=TS"
+ ],
+ "Go": [
+  "golang",
+  "=Go"
+ ],
+ "Rust": [
+  "=Rust"
+ ],
+ "C++": [
+  "c++",
+  "cpp"
+ ],
+ "C": [
+  "=C"
+ ],
+ "C#": [
+  "c#",
+  ".net",
+  "dotnet"
+ ],
+ "Ruby": [
+  "ruby",
+  "rails",
+  "ruby on rails"
+ ],
+ "Kotlin": [
+  "kotlin"
+ ],
+ "Swift": [
+  "=Swift"
+ ],
+ "Scala": [
+  "scala"
+ ],
+ "PHP": [
+  "php"
+ ],
+ "R": [
+  "=R"
+ ],
+ "SQL": [
+  "sql"
+ ],
+ "Bash": [
+  "bash",
+  "shell scripting"
+ ],
+ "React": [
+  "react",
+  "react.js",
+  "reactjs"
+ ],
+ "Next.js": [
+  "next.js",
+  "nextjs"
+ ],
+ "Vue": [
+  "vue",
+  "vue.js"
+ ],
+ "Angular": [
+  "angular"
+ ],
+ "HTML/CSS": [
+  "html",
+  "css",
+  "tailwind"
+ ],
+ "Django": [
+  "django"
+ ],
+ "Flask": [
+  "flask"
+ ],
+ "FastAPI": [
+  "fastapi"
+ ],
+ "Spring": [
+  "spring boot",
+  "=Spring"
+ ],
+ "GraphQL": [
+  "graphql"
+ ],
+ "REST APIs": [
+  "rest api",
+  "rest apis",
+  "restful",
+  "=REST"
+ ],
+ "gRPC": [
+  "grpc"
+ ],
+ "PostgreSQL": [
+  "postgresql",
+  "postgres"
+ ],
+ "MySQL": [
+  "mysql"
+ ],
+ "MongoDB": [
+  "mongodb",
+  "mongo"
+ ],
+ "Redis": [
+  "redis"
+ ],
+ "SQLite": [
+  "sqlite"
+ ],
+ "DynamoDB": [
+  "dynamodb"
+ ],
+ "Elasticsearch": [
+  "elasticsearch"
+ ],
+ "Kafka": [
+  "kafka"
+ ],
+ "Spark": [
+  "spark",
+  "pyspark"
+ ],
+ "Airflow": [
+  "airflow"
+ ],
+ "dbt": [
+  "dbt"
+ ],
+ "Snowflake": [
+  "snowflake"
+ ],
+ "AWS": [
+  "aws",
+  "amazon web services",
+  "=EC2",
+  "=S3"
+ ],
+ "GCP": [
+  "gcp",
+  "google cloud"
+ ],
+ "Azure": [
+  "azure"
+ ],
+ "Docker": [
+  "docker"
+ ],
+ "Kubernetes": [
+  "kubernetes",
+  "k8s"
+ ],
+ "Terraform": [
+  "terraform"
+ ],
+ "CI/CD": [
+  "ci/cd",
+  "github actions",
+  "jenkins",
+  "continuous integration"
+ ],
+ "Linux": [
+  "linux",
+  "unix"
+ ],
+ "Git": [
+  "git"
+ ],
+ "Machine Learning": [
+  "machine learning",
+  "=ML"
+ ],
+ "Deep Learning": [
+  "deep learning"
+ ],
+ "PyTorch": [
+  "pytorch"
+ ],
+ "TensorFlow": [
+  "tensorflow"
+ ],
+ "scikit-learn": [
+  "scikit-learn",
+  "sklearn"
+ ],
+ "pandas": [
+  "pandas"
+ ],
+ "NumPy": [
+  "numpy"
+ ],
+ "LLMs": [
+  "llm",
+  "llms",
+  "large language models",
+  "generative ai",
+  "genai"
+ ],
+ "NLP": [
+  "nlp",
+  "natural language processing"
+ ],
+ "Computer Vision": [
+  "computer vision"
+ ],
+ "Data Analysis": [
+  "data analysis",
+  "analytics"
+ ],
+ "Statistics": [
+  "statistics",
+  "statistical"
+ ],
+ "Excel": [
+  "excel"
+ ],
+ "Tableau": [
+  "tableau"
+ ],
+ "Distributed Systems": [
+  "distributed systems"
+ ],
+ "Microservices": [
+  "microservices"
+ ],
+ "iOS": [
+  "ios"
+ ],
+ "Android": [
+  "android"
+ ],
+ "Security": [
+  "application security",
+  "appsec",
+  "security engineering"
+ ],
+ "Networking": [
+  "networking",
+  "tcp/ip"
+ ],
+ "Testing": [
+  "unit testing",
+  "pytest",
+  "jest",
+  "integration testing"
+ ],
+ "Agile": [
+  "agile",
+  "scrum"
+ ],
+ "Figma": [
+  "figma"
+ ]
+}
