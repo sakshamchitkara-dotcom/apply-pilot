@@ -58,6 +58,7 @@ def main():
 
     sr = json.loads(get("https://api.smartrecruiters.com/v1/companies/ServiceNow/postings?limit=100"))
     sr["content"] = pick(sr["content"], lambda j: j["name"], 3)
+    sr["totalFound"] = len(sr["content"])  # single page, so the pager stops
     (OUT / "smartrecruiters_servicenow.json").write_text(json.dumps(sr, indent=1))
 
     md = get("https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/README.md")

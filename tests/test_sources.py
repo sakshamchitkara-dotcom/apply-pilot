@@ -31,3 +31,11 @@ def test_ashby_normalizes_with_salary(fixture_http):
     assert sec.title == "Security Engineer, Cloud"  # whitespace stripped
     assert sec.salary_min == 211400 and sec.remote
     assert "Remote (US)" in sec.location
+
+
+def test_smartrecruiters_normalizes(fixture_http):
+    http = fixture_http({"https://api.smartrecruiters.com/v1/companies/ServiceNow/": "smartrecruiters_servicenow.json"})
+    ps = sources.smartrecruiters(http, "ServiceNow")
+    assert len(ps) == 3
+    assert all(p.url.startswith("https://jobs.smartrecruiters.com/ServiceNow/") for p in ps)
+    assert ps[0].company == "ServiceNow" and ", ," not in ps[0].location
