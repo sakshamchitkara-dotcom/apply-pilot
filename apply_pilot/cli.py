@@ -209,6 +209,23 @@ def cmd_dashboard(args):
         pass
 
 
+def cmd_digest(args):
+    from . import digest
+    text = digest.build(_conn(), args.since_hours)
+    print(text)
+    if args.send:
+        print("sent via:", ", ".join(digest.send(text)) or "nothing configured")
+    else:
+        print("\n(dry run: pass --send to deliver via SMTP/Telegram settings in the environment)")
+
+
+def cmd_daily(args):
+    """Unattended-safe: fetch + shortlist + digest. Never tailors, approves or applies."""
+    cmd_fetch(args)
+    cmd_shortlist(args)
+    cmd_digest(args)
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="apply-pilot", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -283,6 +300,24 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("dashboard", help="local web dashboard for the tracker")
     p.add_argument("--port", type=int, default=8765)
     p.set_defaults(fn=cmd_dashboard)
+
+    def digest_opts(p):
+        p.add_argument("--since-hours", type=int, default=24)
+        p.add_argument("--send", action="store_true", help="deliver (default is dry run)")
+
+    p = sub.add_parser("digest", help="summary of new shortlisted roles and due follow-ups")
+    digest_opts(p)
+    p.set_defaults(fn=cmd_digest)
+
+    p = sub.add_parser("daily", help="cron-safe: fetch + shortlist + digest (never applies)")
+    company_opts(p)
+    profile_opts(p)
+    digest_opts(p)
+    p.add_argument("--lists", default="all")
+    p.add_argument("--claude", action="store_true")
+    p.add_argument("--claude-top", type=int, default=15)
+    p.add_argument("--top", type=int, default=20)
+    p.set_defaults(fn=cmd_daily)
 
     p = sub.add_parser("verify-companies", help="check every board token is live (bypasses cache)")
     company_opts(p)
