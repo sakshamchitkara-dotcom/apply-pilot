@@ -31,3 +31,21 @@ def test_heuristic_prefers_overlap():
     bad, _ = match.heuristic_score(post(description="Kotlin, Swift, iOS, Android"), PROFILE, PREFS)
     assert good > bad and 0 <= bad <= 100
     assert any("missing Kubernetes" in r for r in why)
+
+
+def test_claude_score_used_when_available(monkeypatch):
+    from apply_pilot import llm
+    seen = {}
+
+    def fake(system, user, schema, **kw):
+        seen["user"] = user
+        return {"score": 81, "reasons": ["FastAPI + PostgreSQL internship"], "gaps": ["Kubernetes"]}
+    monkeypatch.setattr(llm, "structured", fake)
+    s, why = match.score(post(), PROFILE, PREFS, use_claude=True)
+    assert s == 81 and "gap: Kubernetes" in why
+    assert "p95 query latency" in seen["user"]  # grounded on resume facts
+
+
+def test_claude_unavailable_falls_back():
+    s, why = match.score(post(), PROFILE, PREFS, use_claude=True)  # no API key in tests
+    assert (s, why) == match.heuristic_score(post(), PROFILE, PREFS)
