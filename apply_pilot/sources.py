@@ -175,3 +175,52 @@ def github_list(http: Http, name: str, url: str | None = None) -> list[Posting]:
             posted_at=text[4] if len(text) > 4 else "", flags=flags,
         ))
     return out
+
+
+def _jsonld_jobs(page: str):
+    import json
+    for block in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', page, re.S | re.I):
+        try:
+            data = json.loads(block)
+        except ValueError:
+            continue
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            node = stack.pop(0)
+            if isinstance(node, dict):
+                if node.get("@type") == "JobPosting":
+                    yield node
+                stack.extend(node.get("@graph", []) if isinstance(node.get("@graph"), list) else [])
+            elif isinstance(node, list):
+                stack.extend(node)
+
+
+def careers_page(http: Http, url: str, company: str) -> list[Posting]:
+    """Company career page exposing schema.org JobPosting JSON-LD. robots.txt is enforced."""
+    import hashlib
+    page = http.get(url, respect_robots=True)
+    out = []
+    for j in _jsonld_jobs(page):
+        locs = j.get("jobLocation") or []
+        locs = locs if isinstance(locs, list) else [locs]
+        where = []
+        for l in locs:
+            a = (l or {}).get("address") or {}
+            where.append(", ".join(filter(None, [a.get("addressLocality"), a.get("addressRegion"), a.get("addressCountry")])))
+        job_url = j.get("url") or url
+        ident = j.get("identifier")
+        ext = str(ident.get("value")) if isinstance(ident, dict) and ident.get("value") else \
+            hashlib.sha1(f"{job_url}|{j.get('title')}".encode()).hexdigest()[:12]
+        sal = ((j.get("baseSalary") or {}).get("value") or {})
+        et = j.get("employmentType", "")
+        out.append(Posting(
+            source="careers", board=company.lower().replace(" ", "-"), external_id=ext,
+            company=(j.get("hiringOrganization") or {}).get("name") or company,
+            title=j.get("title", "").strip(), location="; ".join(w for w in where if w),
+            remote=j.get("jobLocationType") == "TELECOMMUTE", url=job_url, apply_url=job_url,
+            description=strip_html(j.get("description", "")),
+            employment_type=", ".join(et) if isinstance(et, list) else et,
+            salary_min=sal.get("minValue") if sal.get("unitText", "YEAR") == "YEAR" else None,
+            posted_at=j.get("datePosted", ""),
+        ))
+    return out

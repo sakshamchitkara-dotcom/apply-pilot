@@ -66,3 +66,21 @@ def test_markdown_pipe_table_flags_and_continuation(fixture_http):
     assert [(p.company, p.title) for p in ps] == [("Acme Robotics", "Software Intern"), ("Acme Robotics", "Data Intern")]
     assert ps[0].flags == ["no_sponsorship"] and ps[0].remote
     assert ps[0].url == "https://job-boards.greenhouse.io/acme/jobs/1"
+
+
+def test_careers_page_jsonld(fixture_http):
+    http = fixture_http({"https://careers.example.test/robots.txt": "=User-agent: *\nAllow: /\n",
+                         "https://careers.example.test/": "careers_jsonld.html"})
+    ps = sources.careers_page(http, "https://careers.example.test/jobs", "Example Widgets")
+    assert [p.title for p in ps] == ["Backend Engineer Intern", "Staff Data Engineer"]
+    assert ps[0].external_id == "EW-101" and ps[0].location == "Austin, TX, US"
+    assert ps[1].remote and ps[1].salary_min == 180000 and ps[1].employment_type == "FULL_TIME"
+
+
+def test_careers_page_respects_robots(fixture_http):
+    import pytest
+    from apply_pilot.http import RobotsDisallowed
+    http = fixture_http({"https://careers.example.test/robots.txt": "=User-agent: *\nDisallow: /jobs\n",
+                         "https://careers.example.test/": "careers_jsonld.html"})
+    with pytest.raises(RobotsDisallowed):
+        sources.careers_page(http, "https://careers.example.test/jobs", "Example Widgets")
