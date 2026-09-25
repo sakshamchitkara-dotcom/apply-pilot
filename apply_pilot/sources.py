@@ -115,3 +115,63 @@ def smartrecruiters(http: Http, token: str, company: str | None = None, max_page
         if (page + 1) * 100 >= data.get("totalFound", 0):
             break
     return out
+
+
+GITHUB_LISTS = {
+    # Community-maintained internship/new-grad lists (public READMEs; raw.githubusercontent.com).
+    "simplify-internships": "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/README.md",
+    "simplify-newgrad": "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/README.md",
+    "vanshb03-internships": "https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/dev/README.md",
+}
+FLAG_EMOJI = {"🛂": "no_sponsorship", "🇺🇸": "us_citizen_only", "🎓": "advanced_degree", "🔒": "closed"}
+
+
+def _clean_url(url: str) -> str:
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+    p = urlsplit(html.unescape(url))
+    q = [(k, v) for k, v in parse_qsl(p.query) if not k.startswith("utm_") and k != "ref"]
+    return urlunsplit(p._replace(query=urlencode(q)))
+
+
+def _table_rows(md: str):
+    """Yield raw cell lists from HTML <tr> rows and markdown pipe rows."""
+    for tr in re.findall(r"<tr>(.*?)</tr>", md, re.S):
+        cells = re.findall(r"<td>(.*?)</td>", tr, re.S)
+        if cells:
+            yield cells
+    for line in md.splitlines():
+        if line.startswith("|") and not re.match(r"^\|\s*-", line):
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if cells and cells[0].lower() != "company":
+                yield cells
+
+
+def github_list(http: Http, name: str, url: str | None = None) -> list[Posting]:
+    import hashlib
+    md = http.get(url or GITHUB_LISTS[name])
+    out, company = [], ""
+    for cells in _table_rows(md):
+        if len(cells) < 4:
+            continue
+        link = re.search(r'href="([^"]+)"', cells[3]) or re.search(r"\]\((http[^)]+)\)", cells[3])
+        text = [strip_html(c.replace("<br>", "; ")) for c in cells]
+        # Collapsed multi-location cells look like "<summary>4 locations</summary>A<br>B"
+        text[2] = re.sub(r"^\*{0,2}\d+ locations\*{0,2}\s*", "", text[2]).replace("\n", "; ")
+        name_cell = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text[0]).strip("* ")
+        company = company if name_cell in ("↳", "") else name_cell
+        raw = " ".join(text)
+        flags = [f for e, f in FLAG_EMOJI.items() if e in raw]
+        if "closed" in flags or not link:
+            continue
+        title = text[1]
+        for e in FLAG_EMOJI:
+            title = title.replace(e, "")
+        apply_url = _clean_url(link.group(1))
+        out.append(Posting(
+            source="github", board=name, external_id=hashlib.sha1(apply_url.encode()).hexdigest()[:12],
+            company=company, title=title.strip(), location=text[2],
+            remote=bool(REMOTE_RE.search(text[2])), url=apply_url, apply_url=apply_url,
+            employment_type="Internship" if "intern" in name else "",
+            posted_at=text[4] if len(text) > 4 else "", flags=flags,
+        ))
+    return out
