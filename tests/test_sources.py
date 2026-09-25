@@ -54,9 +54,9 @@ def test_simplify_html_table(fixture_http):
 MD_TABLE = """
 | Company | Role | Location | Application/Link | Date Posted |
 | ------- | ---- | -------- | ---------------- | ----------- |
-| Acme Robotics | Software Intern 🛂 | Remote | <a href="https://job-boards.greenhouse.io/acme/jobs/1?utm_source=x"><img alt="Apply"></a> | Aug 21 |
+| 🔥 Acme Robotics | Software Intern 🛂 | Remote | <a href="https://job-boards.greenhouse.io/acme/jobs/1?utm_source=x"><img alt="Apply"></a> | Aug 21 |
 | ↳ | Data Intern | Austin, TX | <a href="https://job-boards.greenhouse.io/acme/jobs/2"><img alt="Apply"></a> | Aug 21 |
-| **[Globex](https://globex.test)** | ML Intern 🔒 | NYC | <a href="https://globex.test/3">Apply</a> | Aug 20 |
+| 🔥 **[Globex](https://globex.test)** | ML Intern 🔒 | NYC | <a href="https://globex.test/3">Apply</a> | Aug 20 |
 """
 
 
