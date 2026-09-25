@@ -154,3 +154,16 @@ def write_packet(profile: dict, posting: dict, d: dict, resume_file: str | None 
         "flags": d["flags"], "engine": d["engine"],
     }, indent=2))
     return out
+
+
+def sync_packet(pdir: Path, profile: dict, posting: dict) -> dict:
+    """Reload the human-editable .md files into packet.json and re-run the claim check."""
+    pk = json.loads((pdir / "packet.json").read_text())
+    pk["cover_letter"] = (pdir / "cover_letter.md").read_text()
+    parts = re.split(r"^## .*$", (pdir / "answers.md").read_text(), flags=re.M)
+    if len(parts) >= 3:
+        pk["why_company"], pk["why_role"] = parts[1].strip(), parts[2].strip()
+    pk["flags"] = [f for key in ("cover_letter", "why_company", "why_role")
+                   for f in flag_unsupported(pk[key], profile, posting)]
+    (pdir / "packet.json").write_text(json.dumps(pk, indent=2))
+    return pk

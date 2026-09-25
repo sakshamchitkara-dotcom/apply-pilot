@@ -132,23 +132,25 @@ def cmd_review(args):
             conn.execute("UPDATE applications SET packet_dir=? WHERE posting_id=?", (str(pdir), post["id"]))
             conn.commit()
         while True:
-            pk = json.loads((pdir / "packet.json").read_text())
+            pk = tailor.sync_packet(pdir, prof, post)  # picks up any hand edits to the .md files
             print("\n" + "=" * 78)
             print(f"[{r['score']}] {post['title']} @ {post['company']} ({post['location'] or 'n/a'})")
             print(f"apply: {post['apply_url'] or post['url']}")
             for why in json.loads(r["reasons"]):
                 print(f"  - {why}")
-            print(f"packet: {pdir}\n--- cover letter ---\n{(pdir / 'cover_letter.md').read_text()}")
+            print(f"packet: {pdir}\n--- cover letter ---\n{pk['cover_letter']}\n--- answers ---\n"
+                  f"{(pdir / 'answers.md').read_text()}")
             if pk["flags"]:
                 print("!!! claims not found in your resume (fix before approving):")
                 for f in pk["flags"]:
                     print(f"  ! {f}")
             choice = input("[a]pprove  [s]kip  [e]dit  [n]ext  [q]uit > ").strip().lower()[:1]
             if choice == "e":
-                subprocess.call([os.environ.get("EDITOR", "vi"), str(pdir / "cover_letter.md")])
-                text = (pdir / "cover_letter.md").read_text()
-                pk["cover_letter"], pk["flags"] = text, tailor.flag_unsupported(text, prof, post)
-                (pdir / "packet.json").write_text(json.dumps(pk, indent=2))
+                editor = os.environ.get("EDITOR", "vi")
+                subprocess.call([editor, str(pdir / "cover_letter.md"), str(pdir / "answers.md")])
+                continue
+            if choice == "a" and "[EDIT ME" in pk["cover_letter"] + pk["why_company"] + pk["why_role"]:
+                print("cannot approve: remove the [EDIT ME] placeholders first ([e]dit).")
                 continue
             if choice == "a":
                 tracker.set_status(conn, post["id"], "approved", "approved in review")

@@ -51,9 +51,16 @@ def test_review_gate(monkeypatch, capsys, tmp_path):
     assert len(ids) >= 2
     with pytest.raises(tracker.BadTransition):  # cannot jump straight to applied
         cli.main(["mark", ids[0], "applied"])
-    answers = iter(["a", "s", "q"])
+    # First approve attempt is refused: the template's why-company answer is an [EDIT ME] placeholder.
+    # The human then edits answers.md ("e" with a scripted EDITOR) and approves.
+    editor = tmp_path / "ed.sh"
+    editor.write_text("#!/bin/sh\nsed -i.bak 's/\\[EDIT ME[^]]*\\]/I use Stripe for my projects./' \"$2\"\n")
+    editor.chmod(0o755)
+    monkeypatch.setenv("EDITOR", str(editor))
+    answers = iter(["a", "e", "a", "s", "q"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     cli.main(["review", "--profile", prof, "--prefs", prefs])
+    assert "cannot approve" in capsys.readouterr().out
     st = {r["posting_id"]: r["status"] for r in tracker.rows(conn)}
     assert st[ids[0]] == "approved" and st[ids[1]] == "skipped"
     cli.main(["mark", ids[0], "applied", "--note", "submitted by hand"])
