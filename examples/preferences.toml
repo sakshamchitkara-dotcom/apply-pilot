@@ -1,0 +1,10 @@
+# apply-pilot preferences. Copy to ./preferences.toml and edit.
+roles = ["software engineer", "backend", "data engineer", "developer", "platform"]
+exclude_title_keywords = ["senior", "staff", "principal", "manager", "director", "lead"]
+locations = ["New York", "NYC", "San Francisco", "SF", "Seattle", "Austin", "Chicago", "Minneapolis", "Remote"]
+remote_ok = true
+seniority = "internship"          # internship | new_grad | any
+needs_sponsorship = false         # true drops postings flagged "no sponsorship" / "US citizens only"
+salary_floor = 0                  # annual USD; postings without salary data are kept
+exclude_companies = []
+min_score = 35                    # 0-100 shortlist threshold
