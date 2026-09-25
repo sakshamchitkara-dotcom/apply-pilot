@@ -29,7 +29,7 @@ def test_pipeline_ingest_shortlist_tailor(monkeypatch, capsys, tmp_path):
     prof, prefs = str(tmp_path / "profile.json"), str(root / "examples" / "preferences.toml")
     cli.main(["ingest-resume", str(root / "examples" / "sample_resume.md"), "--profile", prof])
     cli.main(["fetch", "--only", "stripe,palantir", "--lists", "simplify-internships"])
-    cli.main(["shortlist", "--profile", prof, "--prefs", prefs])
+    cli.main(["shortlist", "--profile", prof, "--prefs", prefs, "--min-score", "50"])
     out = capsys.readouterr().out
     assert "shortlisted" in out
     cli.main(["tailor", "--profile", prof, "--prefs", prefs, "--top", "1"])
@@ -45,7 +45,7 @@ def test_review_gate(monkeypatch, capsys, tmp_path):
     prof, prefs = str(tmp_path / "profile.json"), str(root / "examples" / "preferences.toml")
     cli.main(["ingest-resume", str(root / "examples" / "sample_resume.md"), "--profile", prof])
     cli.main(["fetch", "--only", "stripe", "--lists", "simplify-internships"])
-    cli.main(["shortlist", "--profile", prof, "--prefs", prefs])
+    cli.main(["shortlist", "--profile", prof, "--prefs", prefs, "--min-score", "50"])
     conn = tracker.init(db.connect())
     ids = [r["posting_id"] for r in tracker.rows(conn, "shortlisted")]
     assert len(ids) >= 2
