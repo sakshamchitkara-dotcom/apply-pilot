@@ -79,6 +79,8 @@ def cmd_shortlist(args):
         "SELECT p.* FROM postings p LEFT JOIN applications a ON a.posting_id=p.id "
         "WHERE a.status IS NULL OR a.status IN ('found','shortlisted')").fetchall()
     passed = [dict(r) for r in todo if not match.check_filters(dict(r), prefs)]
+    if args.details:
+        _fetch_details(conn, passed, args.details_max)
     # Heuristic ranks everything; the (paid) Claude rubric only re-scores the top candidates.
     scored = sorted(((match.heuristic_score(p, prof, prefs), p) for p in passed), key=lambda t: -t[0][0])
     for i, ((s, why), p) in enumerate(scored):
@@ -92,6 +94,29 @@ def cmd_shortlist(args):
         print("score distribution of postings that passed filters (pick min_score from this):")
         print(_histogram([s for (s, _), _ in scored], prefs["min_score"]))
     _print_rows(tracker.rows(conn, "shortlisted", args.top))
+
+
+def _fetch_details(conn, postings: list[dict], limit: int) -> None:
+    """Fill in descriptions the list endpoints don't return, only for postings that passed filters."""
+    http, done = Http(), 0
+    for p in postings:
+        if p["source"] != "smartrecruiters" or "\n\n" in p["description"] or done >= limit:
+            continue
+        _, board, ext = p["id"].split(":", 2)
+        try:
+            body, apply_url = sources.smartrecruiters_details(http, board, ext)
+        except Exception as e:
+            print(f"  ! details {p['id']}: {e}", file=sys.stderr)
+            continue
+        done += 1
+        if body:
+            p["description"] = f"{p['description']}\n\n{body}".strip()
+            p["apply_url"] = apply_url or p["apply_url"]
+            conn.execute("UPDATE postings SET description=?, apply_url=? WHERE id=?",
+                         (p["description"], p["apply_url"], p["id"]))
+    conn.commit()
+    if done:
+        print(f"fetched details for {done} posting(s); network requests: {http.network_calls}")
 
 
 def _histogram(scores: list[int], cut: int, width: int = 40) -> str:
@@ -272,6 +297,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--claude-top", type=int, default=15)
     p.add_argument("--top", type=int, default=20)
     p.add_argument("--min-score", type=int, help="override min_score from preferences for this run")
+    p.add_argument("--no-details", dest="details", action="store_false",
+                   help="stay offline: don't fetch full descriptions for filter-passing postings")
+    p.add_argument("--details-max", type=int, default=100, help="max detail requests per run")
     p.set_defaults(fn=cmd_shortlist)
 
     p = sub.add_parser("list", help="list tracked applications")
@@ -336,6 +364,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--claude-top", type=int, default=15)
     p.add_argument("--top", type=int, default=20)
     p.add_argument("--min-score", type=int, help="override min_score from preferences for this run")
+    p.add_argument("--no-details", dest="details", action="store_false",
+                   help="stay offline: don't fetch full descriptions for filter-passing postings")
+    p.add_argument("--details-max", type=int, default=100, help="max detail requests per run")
     p.set_defaults(fn=cmd_daily)
 
     p = sub.add_parser("verify-companies", help="check every board token is live (bypasses cache)")

@@ -127,6 +127,17 @@ def smartrecruiters(http: Http, token: str, company: str | None = None, max_page
     return out
 
 
+def smartrecruiters_details(http: Http, token: str, posting_id: str) -> tuple[str, str]:
+    """(description, apply_url) from the per-posting endpoint of the public Posting API,
+    GET /v1/companies/{company}/postings/{id}. One request per posting, so callers
+    only use it for postings that already passed the filters."""
+    j = http.get_json(f"https://api.smartrecruiters.com/v1/companies/{token}/postings/{posting_id}")
+    sections = (j.get("jobAd") or {}).get("sections") or {}
+    body = [f"{sec.get('title', '')}\n{strip_html(sec.get('text', ''))}"
+            for key, sec in sections.items() if key != "companyDescription" and sec.get("text")]
+    return "\n\n".join(body), j.get("applyUrl") or ""
+
+
 GITHUB_LISTS = {
     # Community-maintained internship/new-grad lists (public READMEs; raw.githubusercontent.com).
     "simplify-internships": "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/README.md",
