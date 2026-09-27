@@ -147,7 +147,8 @@ STOPPED before submit. Review every field; YOU click the red-outlined submit but
 
 ## Limitations
 
-- The heuristic scorer is keyword-based (`apply_pilot/data/skills.json`). GitHub-list rows have no description, so those scores rely on the title and are damped.
+- The heuristic scorer is keyword-based (`apply_pilot/data/skills.json`). GitHub-list rows have no description, so those scores rely on the title and are damped; a row whose title names no skill scores 52 and stays below the example threshold. `shortlist` prints the score histogram so you can pick `min_score` (or pass `--min-score`).
+- SmartRecruiters boards are capped at 5 pages (500 postings) unless you pass `--sr-max-pages 0`. Their full descriptions are fetched per posting, only for postings that pass your filters.
 - Résumé parsing is heuristic. Check `profile.json` after ingesting.
 - Form pre-fill matches fields by label, name and id. Custom widgets (React selects, multi-step ATS flows) will need manual input, and the helper reports which fields it skipped.
 

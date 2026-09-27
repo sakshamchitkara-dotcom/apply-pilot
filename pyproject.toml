@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apply-pilot"
-version = "0.1.0"
+version = "0.2.0"
 description = "Find job/internship postings from public ATS APIs, match them to your resume, draft grounded applications, and apply only with per-application human approval."
 readme = "README.md"
 requires-python = ">=3.10"
